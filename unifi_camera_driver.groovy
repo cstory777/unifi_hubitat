@@ -16,6 +16,7 @@
  * 
  *  For more information, see https://github.com/cstory777/unifi_hubitat 
  */
+
 metadata {
     definition (name: "UniFi NVR Camera", namespace: "cstory777", author: "Chris Story") {
         capability "Motion Sensor"
@@ -23,6 +24,7 @@ metadata {
         capability "Refresh"
         capability "Image Capture"
     }
+   
     
     simulator {
         
@@ -53,34 +55,36 @@ metadata {
     
     preferences {
         input "pollInterval", "number", title: "Poll Interval", description: "Polling interval in seconds for motion detection", defaultValue: 5
-        input "snapOnMotion", "bool", title: "Snapshot on motion", description: "If enabled, take a snapshot when the camera detects motion", defaultValue: false
+        /*input "snapOnMotion", "bool", title: "Snapshot on motion", description: "If enabled, take a snapshot when the camera detects motion", defaultValue: false*/
     }
 }
 
 /**
  * installed()
  *
- * Called by ST platform.
+ * Called by Hubiat Platform.
  */
 def installed()
 {
-    updated()
+    //updated()
 }
 
 /**
  * updated()
  *
- * Called by ST platform.
+ * Called by Hubitat Platform.
  */
+
 def updated()
 {
     // Unschedule here to remove any zombie runIn calls that the platform
     // seems to keep around even if the code changes during dev
+    log.info "${device.data}"
     unschedule()
     
-    state.uuid                   = getDataValue( "uuid" )
-    state.name                   = getDataValue( "name" )
-    state.id                     = getDataValue( "id" )
+    state.uuid                   = device.data["uuid"]
+    state.name                   = device.data["name"]
+    state.id                     = device.data["id"]
     state.lastRecordingStartTime = null
     state.motion                 = "uninitialized"
     state.connectionStatus       = "uninitialized"
@@ -89,13 +93,9 @@ def updated()
     state.successiveApiFails     = 0
     state.lastPoll               = new Date().time
     
-    
-    
-    
     log.info "${device.displayName} updated with state: ${state}"
     
-    //runEvery1Minute( nvr_cameraPollWatchdog )
-    schedule( "0 * * * * ?", nvr_cameraPollWatchdog )
+    runEvery1Minute( nvr_cameraPollWatchdog )
     
     nvr_cameraPoll()
 }
@@ -103,7 +103,7 @@ def updated()
 /**
  * refresh()
  * 
- * Called by ST platform, part of "Refresh" capability.  Usually only called when the user explicitly
+ * Called by Hubitat Platform, part of "Refresh" capability.  Usually only called when the user explicitly
  * refreshes the device details pane.
  */
 def refresh()
@@ -115,7 +115,7 @@ def refresh()
 /**
  * take()
  *
- * Called by ST platform, part of "Image Capture" capability.
+ * Called by Hubitat Platform, part of "Image Capture" capability.
  */
 def take()
 {
@@ -181,10 +181,9 @@ def nvr_cameraTakeCallback( hubitat.device.HubResponse hubResponse )
 def nvr_cameraPollWatchdog()
 {
     def now = new Date().time
-    log.debug "Now = ${now}"
-    log.debug "Then = ${then}"
+    
     def elapsed = Math.floor( (now - state.lastPoll) / 1000 )
-
+    
     //log.debug "nvr_cameraPollWatchdog: it has been ${elapsed} seconds since a poll for ${device.displayName}"
     
     if( elapsed > (state.pollInterval * 5) )
@@ -202,13 +201,14 @@ def nvr_cameraPollWatchdog()
  */
 def nvr_cameraPoll() 
 {
+    //log.info "Camera Poll"
     def key = parent._getApiKey()
     def target = parent._getNvrTarget()
-    def then = new Date().time
+
     
     if( state.pollIsActive )
     {
-        log.error "nvr_cameraPoll() - ${device.displayName} failed to return API call to NVR"
+        /*log.error "nvr_cameraPoll() - ${device.displayName} failed to return API call to NVR"*/
         
         ++state.successiveApiFails
         
@@ -255,6 +255,7 @@ def nvr_cameraPoll()
  */
 def nvr_cameraPollCallback( hubitat.device.HubResponse hubResponse )
 {
+    /*log.info "Camera Poll Callback"*/
     def motion = "inactive"
     def data = hubResponse?.json?.data
     
@@ -297,7 +298,7 @@ def nvr_cameraPollCallback( hubitat.device.HubResponse hubResponse )
     if( motion != state.motion )
     {
         // Send motion before doing the take to prioritize the reaction time to motion.  It isn't clear what
-        // the ST platform does for scheduling or blocking in either the sendEvent or sendHubCommand calls.
+        // the Hubitat Platform does for scheduling or blocking in either the sendEvent or sendHubCommand calls.
         state.motion = motion
         _sendMotion( motion )
         
@@ -311,7 +312,7 @@ def nvr_cameraPollCallback( hubitat.device.HubResponse hubResponse )
 /**
  * _sendMotion()
  *
- * Sends a motion event to the ST platform.
+ * Sends a motion event to the Hubitat Platform.
  *
  * @arg motion Either "active" or "inactive"
  */
@@ -338,7 +339,7 @@ private _sendMotion( motion )
 /**
  * _sendConnectionStatus()
  *
- * Sends a connection status event to the ST platform.
+ * Sends a connection status event to the Hubitat Platform.
  *
  * @arg motion Either "CONNECTED" or "DISCONNECTED"
  */
@@ -379,7 +380,6 @@ private _parseDescriptionAsMap( description )
  *
  * Builds a unique picture name for storing in S3.
  */
-
 private _generatePictureName()
 {
     def pictureUuid = java.util.UUID.randomUUID().toString().replaceAll('-', '')
@@ -387,3 +387,5 @@ private _generatePictureName()
     
     return picName
 }
+
+
