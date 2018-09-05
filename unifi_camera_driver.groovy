@@ -66,7 +66,7 @@ metadata {
  */
 def installed()
 {
-    //updated()
+    updated()
 }
 
 /**
